@@ -19,7 +19,7 @@
     // Colores para cada grupo
     const groupColors = ['#e6f4ea', '#e6f0fa', '#fff5e6']; // Verde claro, Azul claro, Amarillo claro
 
-    // Función para generar archivo Word
+    // Función para generar archivo Word (mantendré la función por si se necesita en el futuro, pero no se usará)
     function generateWordDoc(integrante, grupoName) {
       const docContent = `
         <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -44,7 +44,7 @@
     }
 
     // Función para renderizar página individual
-    function renderIndividualPage(data, queryGroup, queryId, shouldDownload) {
+    function renderIndividualPage(data, queryGroup, queryId) {
       const groupIndex = data.grupos.findIndex(g => g.grupo === queryGroup);
       if (groupIndex !== -1) {
         const integrante = data.grupos[groupIndex].integrantes.find(m => m.id === queryId);
@@ -121,14 +121,10 @@
                 </tbody>
               </table>
               <p class="animate" style="animation-delay:0.7s; color: #666;">Para ver más integrantes, inicia sesión como administrador.</p>
-              ${shouldDownload ? '' : '<a href="/" class="nav-button" style="animation-delay:0.8s">Volver al Inicio</a>'}
+              <a href="/" class="nav-button" style="animation-delay:0.8s">Volver al Inicio</a>
             </div>
           `;
           document.getElementById('root').innerHTML = htmlContent;
-
-          if (shouldDownload) {
-            generateWordDoc(integrante, queryGroup);
-          }
         } else {
           alert('Integrante no encontrado');
         }
@@ -152,7 +148,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         const queryGroup = urlParams.get('group');
         const queryId = urlParams.get('id');
-        const shouldDownload = urlParams.get('download') === 'true';
 
         // Estilos globales
         const styles = `
@@ -297,11 +292,11 @@
           });
 
           // Modo invitado
-          document.getElementById('guestMode').addEventListener('click', () => renderGroupSelection(queryGroup, queryId, shouldDownload));
+          document.getElementById('guestMode').addEventListener('click', () => renderGroupSelection(queryGroup, queryId));
         }
 
         // Función para selección de grupo (modo invitado, solo primer integrante)
-        function renderGroupSelection(queryGroup, queryId, shouldDownload) {
+        function renderGroupSelection(queryGroup, queryId) {
           const htmlContent = `
             ${styles}
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2rem; text-align: center; background: #f9f9f9;">
@@ -309,7 +304,7 @@
               ${data.grupos.map((grupo, index) => {
                 const integrante = grupo.integrantes[0]; // Solo el primer integrante
                 const tableBackground = groupColors[index] || '#f9f9f9';
-                const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}&download=true`;
+                const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}`;
                 return `
                   <div class="animate" style="animation-delay:${0.2 + index * 0.1}s; margin-bottom: 1.5rem;">
                     <h3 style="color: #444;">Grupo ${grupo.grupo}</h3>
@@ -333,7 +328,7 @@
                       </tbody>
                     </table>
                     <div id="qrcode-${index}" style="margin: 1rem auto; width: 150px; height: 150px;"></div>
-                    <button class="nav-button" onclick="window.selectGroup(${index}, '${queryGroup}', '${queryId}', ${shouldDownload})" style="margin-top: 0.5rem;">Ver Detalles de Grupo ${grupo.grupo}</button>
+                    <button class="nav-button" onclick="window.selectGroup(${index}, '${queryGroup}', '${queryId}')" style="margin-top: 0.5rem;">Ver Detalles de Grupo ${grupo.grupo}</button>
                   </div>
                 `;
               }).join('')}
@@ -345,7 +340,7 @@
           // Generar QRs en la selección de grupo
           data.grupos.forEach((grupo, index) => {
             const integrante = grupo.integrantes[0];
-            const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}&download=true`;
+            const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}`;
             new QRCode(document.getElementById(`qrcode-${index}`), {
               text: specificUrl,
               width: 150,
@@ -362,18 +357,18 @@
           }
 
           // Definir selectGroup en window para onclick
-          window.selectGroup = (index, queryGroup, queryId, shouldDownload) => {
+          window.selectGroup = (index, queryGroup, queryId) => {
             currentGroupIndex = index;
-            renderIndividualMember(index, queryGroup, queryId, shouldDownload);
+            renderIndividualMember(index, queryGroup, queryId);
           };
         }
 
         // Función para mostrar integrante individual (solo el primero en modo invitado)
-        function renderIndividualMember(currentGroupIndex, queryGroup, queryId, shouldDownload) {
+        function renderIndividualMember(currentGroupIndex, queryGroup, queryId) {
           const grupo = data.grupos[currentGroupIndex];
           const integrante = grupo.integrantes[0]; // Solo el primer integrante
           const tableBackground = groupColors[currentGroupIndex] || '#f9f9f9';
-          const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}&download=true`;
+          const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}`;
 
           const htmlContent = `
             ${styles}
@@ -412,14 +407,9 @@
             height: 200
           });
 
-          // Descarga automática si download=true
-          if (shouldDownload) {
-            generateWordDoc(integrante, grupo.grupo);
-          }
-
           // Botón regresar
           document.getElementById('backButton').addEventListener('click', () => {
-            renderGroupSelection(queryGroup, queryId, shouldDownload);
+            renderGroupSelection(queryGroup, queryId);
           });
         }
 
@@ -495,7 +485,7 @@
 
         // Lógica inicial
         if (queryGroup && queryId) {
-          renderIndividualPage(data, queryGroup, queryId, shouldDownload);
+          renderIndividualPage(data, queryGroup, queryId);
         } else if (isAdmin) {
           renderAdminView();
         } else {
