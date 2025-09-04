@@ -19,30 +19,6 @@
     // Colores para cada grupo
     const groupColors = ['#e6f4ea', '#e6f0fa', '#fff5e6']; // Verde claro, Azul claro, Amarillo claro
 
-    // Función para generar archivo Word (mantendré la función por si se necesita en el futuro, pero no se usará)
-    function generateWordDoc(integrante, grupoName) {
-      const docContent = `
-        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-          <w:body>
-            <w:p><w:r><w:t>Datos del Integrante - Grupo ${grupoName}</w:t></w:r></w:p>
-            <w:tbl>
-              <w:tblPr><w:tblBorders><w:top w:val="single"/><w:bottom w:val="single"/><w:left w:val="single"/><w:right w:val="single"/></w:tblBorders></w:tblPr>
-              <w:tr><w:tc><w:p><w:r><w:t>Nombre</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.nombre}</w:t></w:r></w:p></w:tc></w:tr>
-              <w:tr><w:tc><w:p><w:r><w:t>ID</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.id}</w:t></w:r></w:p></w:tc></w:tr>
-              <w:tr><w:tc><w:p><w:r><w:t>No. Empleado</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.numEmpleado}</w:t></w:r></w:p></w:tc></w:tr>
-              <w:tr><w:tc><w:p><w:r><w:t>Sexo</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.sexo}</w:t></w:r></w:p></w:tc></w:tr>
-            </w:tbl>
-          </w:body>
-        </w:document>
-      `;
-      const zip = new JSZip();
-      zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
-      zip.file("word/document.xml", docContent);
-      zip.generateAsync({ type: "blob" }).then(blob => {
-        saveAs(blob, `${integrante.nombre}_Grupo_${grupoName}.docx`);
-      });
-    }
-
     // Función para renderizar página individual
     function renderIndividualPage(data, queryGroup, queryId) {
       const groupIndex = data.grupos.findIndex(g => g.grupo === queryGroup);
@@ -100,7 +76,7 @@
           const htmlContent = `
             ${styles}
             <div>
-              <h1 class="animate" style="font-size: 2rem; color: #333;">Mini Perfil - Grupo ${queryGroup}</h1>
+              <h1 class="animate" style="font-size: 2rem; color: #333;">Grupo ${queryGroup}</h1>
               <table class="animate-table" style="background:${tableBackground}; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
                 <thead>
                   <tr><th colspan="2">Datos del Integrante</th></tr>
