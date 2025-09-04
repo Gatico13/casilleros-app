@@ -1,13 +1,516 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Casilleros App</title>
-    <link rel="stylesheet" href="assets/index.css">
-  </head>
-  <body>
-    <div id="root">Cargando aplicación...</div>
-    <script type="module" src="assets/index.js"></script>
-  </body>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casilleros App</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.28.0/docxtemplater.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+  <div id="root">Cargando aplicación...</div>
+  <script>
+    // Credenciales hardcodeadas para admin (NO SEGURO, solo para demo)
+    const ADMIN_USER = 'admin';
+    const ADMIN_PASS = 'password123';
+
+    // Colores para cada grupo
+    const groupColors = ['#e6f4ea', '#e6f0fa', '#fff5e6']; // Verde claro, Azul claro, Amarillo claro
+
+    // Función para generar archivo Word
+    function generateWordDoc(integrante, grupoName) {
+      const docContent = `
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p><w:r><w:t>Datos del Integrante - Grupo ${grupoName}</w:t></w:r></w:p>
+            <w:tbl>
+              <w:tblPr><w:tblBorders><w:top w:val="single"/><w:bottom w:val="single"/><w:left w:val="single"/><w:right w:val="single"/></w:tblBorders></w:tblPr>
+              <w:tr><w:tc><w:p><w:r><w:t>Nombre</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.nombre}</w:t></w:r></w:p></w:tc></w:tr>
+              <w:tr><w:tc><w:p><w:r><w:t>ID</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.id}</w:t></w:r></w:p></w:tc></w:tr>
+              <w:tr><w:tc><w:p><w:r><w:t>No. Empleado</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.numEmpleado}</w:t></w:r></w:p></w:tc></w:tr>
+              <w:tr><w:tc><w:p><w:r><w:t>Sexo</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>${integrante.sexo}</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>
+      `;
+      const zip = new JSZip();
+      zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+      zip.file("word/document.xml", docContent);
+      zip.generateAsync({ type: "blob" }).then(blob => {
+        saveAs(blob, `${integrante.nombre}_Grupo_${grupoName}.docx`);
+      });
+    }
+
+    // Función para renderizar página individual
+    function renderIndividualPage(data, queryGroup, queryId, shouldDownload) {
+      const groupIndex = data.grupos.findIndex(g => g.grupo === queryGroup);
+      if (groupIndex !== -1) {
+        const integrante = data.grupos[groupIndex].integrantes.find(m => m.id === queryId);
+        if (integrante) {
+          const tableBackground = groupColors[groupIndex] || '#f9f9f9';
+          const styles = `
+            <style>
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              .animate { animation: fadeIn 0.5s ease-out forwards; }
+              .nav-button {
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 0.5rem 1rem;
+                margin: 0 0.5rem;
+                cursor: pointer;
+                border-radius: 4px;
+                font-size: 1rem;
+                transition: background 0.3s;
+              }
+              .nav-button:hover:not(:disabled) {
+                background: #0056b3;
+              }
+              table {
+                width: 80%;
+                margin: 1rem auto;
+                border-collapse: collapse;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+              }
+              th, td {
+                padding: 0.75rem;
+                border: 1px solid #ddd;
+                text-align: left;
+              }
+              th {
+                background: #f5f5f5;
+                font-weight: bold;
+              }
+              body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: #f9f9f9;
+                margin: 0;
+                padding: 2rem;
+                text-align: center;
+              }
+            </style>
+          `;
+          const htmlContent = `
+            ${styles}
+            <div>
+              <h1 class="animate" style="font-size: 2rem; color: #333;">Mini Perfil - Grupo ${queryGroup}</h1>
+              <table class="animate-table" style="background:${tableBackground}; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                <thead>
+                  <tr><th colspan="2">Datos del Integrante</th></tr>
+                </thead>
+                <tbody>
+                  <tr class="animate-row" style="animation-delay:0.3s">
+                    <td>Nombre</td><td>${integrante.nombre}</td>
+                  </tr>
+                  <tr class="animate-row" style="animation-delay:0.4s">
+                    <td>ID</td><td>${integrante.id}</td>
+                  </tr>
+                  <tr class="animate-row" style="animation-delay:0.5s">
+                    <td>No. Empleado</td><td>${integrante.numEmpleado}</td>
+                  </tr>
+                  <tr class="animate-row" style="animation-delay:0.6s">
+                    <td>Sexo</td><td>${integrante.sexo}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="animate" style="animation-delay:0.7s; color: #666;">Para ver más integrantes, inicia sesión como administrador.</p>
+              ${shouldDownload ? '' : '<a href="/" class="nav-button" style="animation-delay:0.8s">Volver al Inicio</a>'}
+            </div>
+          `;
+          document.getElementById('root').innerHTML = htmlContent;
+
+          if (shouldDownload) {
+            generateWordDoc(integrante, queryGroup);
+          }
+        } else {
+          alert('Integrante no encontrado');
+        }
+      } else {
+        alert('Grupo no encontrado');
+      }
+    }
+
+    // Función principal
+    fetch('casilleros.json')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Error al cargar el archivo casilleros.json');
+        }
+        return response.json();
+      })
+      .then(data => {
+        const root = document.getElementById("root");
+        let isAdmin = localStorage.getItem('isAdmin') === 'true';
+        let currentGroupIndex = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryGroup = urlParams.get('group');
+        const queryId = urlParams.get('id');
+        const shouldDownload = urlParams.get('download') === 'true';
+
+        // Estilos globales
+        const styles = `
+          <style>
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .animate { animation: fadeIn 0.5s ease-out forwards; }
+            .animate-table { animation: fadeIn 0.5s ease-out forwards; }
+            .animate-row { animation: fadeIn 0.5s ease-out forwards; }
+            .nav-button {
+              background: #007bff;
+              color: white;
+              border: none;
+              padding: 0.5rem 1rem;
+              margin: 0 0.5rem;
+              cursor: pointer;
+              border-radius: 4px;
+              font-size: 1rem;
+              transition: background 0.3s;
+            }
+            .nav-button:disabled {
+              background: #cccccc;
+              cursor: not-allowed;
+            }
+            .nav-button:hover:not(:disabled) {
+              background: #0056b3;
+            }
+            table {
+              width: 80%;
+              margin: 1rem auto;
+              border-collapse: collapse;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            th, td {
+              padding: 0.75rem;
+              border: 1px solid #ddd;
+              text-align: left;
+            }
+            th {
+              background: #f5f5f5;
+              font-weight: bold;
+            }
+            .login-form {
+              max-width: 400px;
+              margin: 2rem auto;
+              padding: 1.5rem;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              background: #fff;
+            }
+            input {
+              display: block;
+              width: 100%;
+              margin: 0.75rem 0;
+              padding: 0.5rem;
+              border: 1px solid #ccc;
+              border-radius: 4px;
+              font-size: 1rem;
+            }
+            button.login-btn {
+              width: 100%;
+              margin: 0.75rem 0;
+              padding: 0.75rem;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 1rem;
+              background: #007bff;
+              color: white;
+              transition: background 0.3s;
+            }
+            button.login-btn:hover {
+              background: #0056b3;
+            }
+            button.guest-btn {
+              width: 50%;
+              margin: 0.5rem auto;
+              padding: 0.5rem;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 0.9rem;
+              background: #6c757d;
+              color: white;
+              transition: background 0.3s;
+            }
+            button.guest-btn:hover {
+              background: #5a6268;
+            }
+            .or-text {
+              text-align: center;
+              margin: 0.5rem 0;
+              color: #666;
+            }
+            #qrcode {
+              margin: 1rem auto;
+              width: 200px;
+              height: 200px;
+            }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              background: #f9f9f9;
+              margin: 0;
+            }
+          </style>
+        `;
+
+        // Función para renderizar el login
+        function renderLogin() {
+          const htmlContent = `
+            ${styles}
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2rem; text-align: center; background: #f9f9f9;">
+              <h1 class="animate" style="font-size: 2rem; color: #333;">Casilleros App - Login Admin</h1>
+              <form class="login-form animate" style="animation-delay: 0.2s">
+                <input type="text" id="username" placeholder="Usuario" required>
+                <input type="password" id="password" placeholder="Contraseña" required>
+                <button type="submit" class="login-btn">Iniciar Sesión</button>
+                <div class="or-text">O</div>
+                <button type="button" class="guest-btn" id="guestMode">Continuar como invitado</button>
+              </form>
+            </div>
+          `;
+          root.innerHTML = htmlContent;
+
+          // Event listener para login
+          document.querySelector('.login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if (user === ADMIN_USER && pass === ADMIN_PASS) {
+              localStorage.setItem('isAdmin', 'true');
+              isAdmin = true;
+              renderAdminView();
+            } else {
+              alert('Credenciales incorrectas');
+            }
+          });
+
+          // Modo invitado
+          document.getElementById('guestMode').addEventListener('click', () => renderGroupSelection(queryGroup, queryId, shouldDownload));
+        }
+
+        // Función para selección de grupo (modo invitado, solo primer integrante)
+        function renderGroupSelection(queryGroup, queryId, shouldDownload) {
+          const htmlContent = `
+            ${styles}
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2rem; text-align: center; background: #f9f9f9;">
+              <h1 class="animate" style="font-size: 2rem; color: #333;">Seleccionar Grupo</h1>
+              ${data.grupos.map((grupo, index) => {
+                const integrante = grupo.integrantes[0]; // Solo el primer integrante
+                const tableBackground = groupColors[index] || '#f9f9f9';
+                const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}&download=true`;
+                return `
+                  <div class="animate" style="animation-delay:${0.2 + index * 0.1}s; margin-bottom: 1.5rem;">
+                    <h3 style="color: #444;">Grupo ${grupo.grupo}</h3>
+                    <table class="animate-table" style="background:${tableBackground}; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                      <thead>
+                        <tr><th colspan="2" style="background: #f5f5f5;">Integrante Representante</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr class="animate-row" style="animation-delay:${0.3 + index * 0.1}s">
+                          <td>Nombre</td><td>${integrante.nombre}</td>
+                        </tr>
+                        <tr class="animate-row" style="animation-delay:${0.4 + index * 0.1}s">
+                          <td>ID</td><td>${integrante.id}</td>
+                        </tr>
+                        <tr class="animate-row" style="animation-delay:${0.5 + index * 0.1}s">
+                          <td>No. Empleado</td><td>${integrante.numEmpleado}</td>
+                        </tr>
+                        <tr class="animate-row" style="animation-delay:${0.6 + index * 0.1}s">
+                          <td>Sexo</td><td>${integrante.sexo}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div id="qrcode-${index}" style="margin: 1rem auto; width: 150px; height: 150px;"></div>
+                    <button class="nav-button" onclick="window.selectGroup(${index}, '${queryGroup}', '${queryId}', ${shouldDownload})" style="margin-top: 0.5rem;">Ver Detalles de Grupo ${grupo.grupo}</button>
+                  </div>
+                `;
+              }).join('')}
+              ${isAdmin ? '<button class="nav-button" id="logout" style="margin-top: 1rem;">Cerrar Sesión</button>' : ''}
+            </div>
+          `;
+          root.innerHTML = htmlContent;
+
+          // Generar QRs en la selección de grupo
+          data.grupos.forEach((grupo, index) => {
+            const integrante = grupo.integrantes[0];
+            const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}&download=true`;
+            new QRCode(document.getElementById(`qrcode-${index}`), {
+              text: specificUrl,
+              width: 150,
+              height: 150
+            });
+          });
+
+          if (isAdmin) {
+            document.getElementById('logout').addEventListener('click', () => {
+              localStorage.removeItem('isAdmin');
+              isAdmin = false;
+              renderLogin();
+            });
+          }
+
+          // Definir selectGroup en window para onclick
+          window.selectGroup = (index, queryGroup, queryId, shouldDownload) => {
+            currentGroupIndex = index;
+            renderIndividualMember(index, queryGroup, queryId, shouldDownload);
+          };
+        }
+
+        // Función para mostrar integrante individual (solo el primero en modo invitado)
+        function renderIndividualMember(currentGroupIndex, queryGroup, queryId, shouldDownload) {
+          const grupo = data.grupos[currentGroupIndex];
+          const integrante = grupo.integrantes[0]; // Solo el primer integrante
+          const tableBackground = groupColors[currentGroupIndex] || '#f9f9f9';
+          const specificUrl = `${window.location.origin}${window.location.pathname}?group=${grupo.grupo}&id=${integrante.id}&download=true`;
+
+          const htmlContent = `
+            ${styles}
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2rem; text-align: center; background: #f9f9f9;">
+              <h1 class="animate" style="font-size: 2rem; color: #333;">Datos Individuales - Grupo ${grupo.grupo}</h1>
+              <table class="animate-table" style="background:${tableBackground}; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                <thead>
+                  <tr><th colspan="2" style="background: #f5f5f5;">Integrante Representante</th></tr>
+                </thead>
+                <tbody>
+                  <tr class="animate-row" style="animation-delay:0.3s">
+                    <td>Nombre</td><td>${integrante.nombre}</td>
+                  </tr>
+                  <tr class="animate-row" style="animation-delay:0.4s">
+                    <td>ID</td><td>${integrante.id}</td>
+                  </tr>
+                  <tr class="animate-row" style="animation-delay:0.5s">
+                    <td>No. Empleado</td><td>${integrante.numEmpleado}</td>
+                  </tr>
+                  <tr class="animate-row" style="animation-delay:0.6s">
+                    <td>Sexo</td><td>${integrante.sexo}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h3 class="animate" style="animation-delay:0.7s; color: #444;">Código QR</h3>
+              <div id="qrcode" class="animate" style="animation-delay:0.8s"></div>
+              <button class="nav-button" id="backButton" style="animation-delay:0.9s; margin-top: 1rem;">Regresar</button>
+            </div>
+          `;
+          root.innerHTML = htmlContent;
+
+          // Generar QR
+          new QRCode(document.getElementById("qrcode"), {
+            text: specificUrl,
+            width: 200,
+            height: 200
+          });
+
+          // Descarga automática si download=true
+          if (shouldDownload) {
+            generateWordDoc(integrante, grupo.grupo);
+          }
+
+          // Botón regresar
+          document.getElementById('backButton').addEventListener('click', () => {
+            renderGroupSelection(queryGroup, queryId, shouldDownload);
+          });
+        }
+
+        // Función para vista admin
+        function renderAdminView() {
+          let currentGroupIndexAdmin = 0;
+          function renderGroupAdmin() {
+            const grupo = data.grupos[currentGroupIndexAdmin];
+            const tableBackground = groupColors[currentGroupIndexAdmin] || '#f9f9f9';
+            const htmlContent = `
+              ${styles}
+              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2rem; text-align: center; background: #f9f9f9;">
+                <h1 class="animate" style="font-size: 2rem; color: #333;">Vista Admin - Grupo ${grupo.grupo}</h1>
+                <p class="animate" style="animation-delay:0.2s; color: #666;">Última actualización: ${data.meta.updatedAt}</p>
+                <div style="margin:1rem 0">
+                  <button class="nav-button" id="prevGroup" ${currentGroupIndexAdmin === 0 ? 'disabled' : ''}>&larr; Anterior</button>
+                  <button class="nav-button" id="nextGroup" ${currentGroupIndexAdmin === data.grupos.length - 1 ? 'disabled' : ''}>Siguiente &rarr;</button>
+                </div>
+                <table class="animate-table" style="background:${tableBackground}; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>ID</th>
+                      <th>No. Empleado</th>
+                      <th>Sexo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${grupo.integrantes.map((integrante, i) => `
+                      <tr class="animate-row" style="animation-delay:${0.3 + i * 0.1}s">
+                        <td>${integrante.nombre}</td>
+                        <td>${integrante.id}</td>
+                        <td>${integrante.numEmpleado}</td>
+                        <td>${integrante.sexo}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                <button class="nav-button" id="logout" style="animation-delay:0.9s; margin-top: 1rem;">Cerrar Sesión</button>
+                <button class="nav-button" id="backButton" style="animation-delay:1.0s; margin-top: 0.5rem;">Regresar</button>
+              </div>
+            `;
+            root.innerHTML = htmlContent;
+
+            document.getElementById('prevGroup').addEventListener('click', () => {
+              if (currentGroupIndexAdmin > 0) {
+                currentGroupIndexAdmin--;
+                renderGroupAdmin();
+              }
+            });
+            document.getElementById('nextGroup').addEventListener('click', () => {
+              if (currentGroupIndexAdmin < data.grupos.length - 1) {
+                currentGroupIndexAdmin++;
+                renderGroupAdmin();
+              }
+            });
+
+            document.getElementById('logout').addEventListener('click', () => {
+              localStorage.removeItem('isAdmin');
+              isAdmin = false;
+              renderLogin();
+            });
+
+            // Botón regresar
+            document.getElementById('backButton').addEventListener('click', () => {
+              localStorage.removeItem('isAdmin');
+              isAdmin = false;
+              renderLogin();
+            });
+          }
+          renderGroupAdmin();
+        }
+
+        // Lógica inicial
+        if (queryGroup && queryId) {
+          renderIndividualPage(data, queryGroup, queryId, shouldDownload);
+        } else if (isAdmin) {
+          renderAdminView();
+        } else {
+          renderLogin();
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        document.getElementById("root").innerHTML = `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2rem; text-align: center; color: red; background: #f9f9f9;">
+            <h1>Error al cargar los datos</h1>
+            <p>${error.message}</p>
+          </div>
+        `;
+      });
+  </script>
+</body>
 </html>
